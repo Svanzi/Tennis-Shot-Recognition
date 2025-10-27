@@ -191,7 +191,7 @@ def main():
             # Se in una finestra attiva, accumula feature
             if active_window is not None:
                 start, end, label = active_window
-                if start <= frame_id <= end:
+                if start <= frame_id < end:
                     if lms is None:
                         # niente landmarks -> vis media sarà 0
                         feats = np.zeros((len(FEATURE_IDX)*2,), dtype=np.float32)
@@ -209,7 +209,7 @@ def main():
                             break
 
                     # Se abbiamo raggiunto la fine della finestra, salva o scarta
-                    if frame_id == end:
+                    if frame_id == end - 1:
                         feats_arr = np.stack(shots_features, axis=0)  # (NB, 26)
                         # Controllo qualità: se la media visibilità media sui frame è bassa, scarta
                         # (replichiamo la logica "se media < soglia -> cancel shot")
