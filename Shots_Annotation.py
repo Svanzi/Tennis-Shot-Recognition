@@ -10,6 +10,14 @@ from tqdm import tqdm
 import pandas as pd
 import numpy as np
 
+##########################################################################################################
+# Script to extract pose sequences (±NB_IMAGES//2) around annotations and save CSVs per clip.
+# Usage:
+#   python Shots_Annotation.py input_video.mp4 
+# Outputs:
+#   - CSV files for each clip in output_dir with landmark coordinates and shot labels.
+##########################################################################################################
+
 # ------------------ Selezione landmarks ------------------
 # Per compatibilità con lo script "coco-like" a 13 punti:
 # 1 NOSE + 12 (spalle, gomiti, polsi, anche, ginocchia, caviglie)
