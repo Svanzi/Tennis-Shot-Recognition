@@ -17,18 +17,17 @@ python Landmarker.py Video/Video_Name.mp4
 ### Annotate shots
 
 Afterwards, you need to manually note the types of shots 
-
-Tennis shot recognition for a Deep Learning project in the video. To do so you can run the following command:
+To do so you can run the following command:
 ```
 python Labeler.py Video/Video_Name.mp4
 ```
-After the video starts it is possible to annotate the shot in a specific frame by using your keyborad:
-* Left arrow : Go back 5 frames
-* Right arrow : Go forward 5 frames
-* Up arrow : Annotate Forehand
-* Down arrow : Annotate Backhand
-* Space : Annotate Serve
-* Esc : Exit and save annotations
+After the video starts it is possible to annotate the shot in the exact frame where the player hits the ball, by using your keyborad:
+* **Left arrow** : Go back 5 frames
+* **Right arrow** : Go forward 5 frames
+* **Up arrow** : Annotate Forehand
+* **Down arrow** : Annotate Backhand
+* **Space** : Annotate Serve
+* **Esc** : Exit and save annotations
 
 ### Adding shots to the dataset
 
