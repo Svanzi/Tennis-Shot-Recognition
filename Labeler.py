@@ -9,7 +9,7 @@ import cv2
 # Usage:
 #   python Labeler.py input_video.mp4
 # Outputs:
-#   - CSV file with annotations in ./Shots Annotation/input_video_Labeled.csv
+#   - CSV file with annotations in ./Shots_Annotation/input_video_Labeled.csv
 ##########################################################################################################
 
 
@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
         cv2.imshow("Frame", frame)
 
-    out_dir = Path("Shots Annotation")
+    out_dir = Path("Shots_Annotation")
     out_dir.mkdir(exist_ok=True)
     out_file = out_dir / f"{Path(args.video).stem}_Labeled.csv"
     

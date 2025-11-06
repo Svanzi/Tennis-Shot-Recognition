@@ -2,11 +2,14 @@ import cv2
 import csv
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Iterable, List, Sequence, Tuple, Optional
-
+from typing import List, Sequence, Tuple
 import mediapipe as mp
 from mediapipe.python.solutions.pose import PoseLandmark
 from tqdm import tqdm
+import numpy as np
+from collections import deque
+import tensorflow as tf
+import os
 
 ##########################################################################################################
 # Script to annotate a video with body-only landmarks using MediaPipe Pose,
@@ -138,59 +141,104 @@ def open_video_writer(
         raise RuntimeError(f"Could not open VideoWriter for: {out_path}")
     return writer
 
+MP_INDICES = {
+    'left_shoulder': 11,
+    'right_shoulder': 12,
+    'left_elbow': 13,
+    'right_elbow': 14,
+    'left_wrist': 15,
+    'right_wrist': 16,
+    'left_hip': 23,
+    'right_hip': 24,
+    'left_knee': 25,
+    'right_knee': 26,
+    'left_ankle': 27,
+    'right_ankle': 28,
+}
 
-# --------- Main pipeline ---------
-def main() -> None:
-    parser = ArgumentParser(description="Annotate a video and export a CSV with body-only landmarks.")
-    parser.add_argument("video", type=str, help="Input video path")
-    parser.add_argument(
-        "--outdir", type=Path, default=Path("Landmarked"),
-        help="Output directory for annotated video and CSV (default: ./Landmarked)"
-    )
-    parser.add_argument(
-        "--visibility-thr", type=float, default=0.5,
-        help="Visibility threshold for drawing/writing landmarks (default: 0.5)"
-    )
-    parser.add_argument(
-        "--model-complexity", type=int, default=1, choices=[0, 1, 2],
-        help="MediaPipe Pose model complexity (0,1,2). Higher = more accurate/slower. Default: 1"
-    )
-    parser.add_argument(
-        "--no-csv", action="store_true",
-        help="Disable CSV export (only write annotated video)."
-    )
-    args = parser.parse_args()
+GROUP_INDICES = {
+    'left_arm':     [MP_INDICES['left_shoulder'],   MP_INDICES['left_elbow'],   MP_INDICES['left_wrist']],
+    'right_arm':    [MP_INDICES['right_shoulder'],  MP_INDICES['right_elbow'],  MP_INDICES['right_wrist']],
+    'left_leg':     [MP_INDICES['left_hip'],        MP_INDICES['left_knee'],    MP_INDICES['left_ankle']],
+    'right_leg':    [MP_INDICES['right_hip'],       MP_INDICES['right_knee'],   MP_INDICES['right_ankle']],
+    'torso':        [MP_INDICES['left_hip'],        MP_INDICES['right_hip'],    MP_INDICES['left_shoulder'], MP_INDICES['right_shoulder']]
+}
 
-    in_path = Path(args.video)
-    if not in_path.exists():
-        raise FileNotFoundError(f"Input video not found: {in_path}")
+DIMS = {
+    'left_arm': 6,
+    'right_arm': 6,
+    'left_leg': 6,
+    'right_leg': 6,
+    'torso': 8
+}
 
-    # Ensure output directory exists
+def extract_body_parts_from_mp(landmarks: Sequence) -> Tuple[np.array, ...]:
+
+    try:
+        kpt_la = np.array([[landmarks[i].x, landmarks[i].y] for i in GROUP_INDICES['left_arm']]).flatten()
+        kpt_ra = np.array([[landmarks[i].x, landmarks[i].y] for i in GROUP_INDICES['right_arm']]).flatten()
+        kpt_t  = np.array([[landmarks[i].x, landmarks[i].y] for i in GROUP_INDICES['torso']]).flatten()
+        kpt_ll = np.array([[landmarks[i].x, landmarks[i].y] for i in GROUP_INDICES['left_leg']]).flatten()
+        kpt_rl = np.array([[landmarks[i].x, landmarks[i].y] for i in GROUP_INDICES['right_leg']]).flatten()
+
+        return kpt_la, kpt_ra, kpt_t, kpt_ll, kpt_rl
+
+    except Exception:
+        return (np.zeros(DIMS['left_arm']), 
+                np.zeros(DIMS['right_arm']), 
+                np.zeros(DIMS['torso']), 
+                np.zeros(DIMS['left_leg']), 
+                np.zeros(DIMS['right_leg']))
+    
+def draw_predictions(frame: np.ndarray, probs:np.ndarray, class_names: List[str]) -> None:
+    pred_idx = np.argmax(probs)
+    pred_name = class_names[pred_idx]
+    confidence = probs[pred_idx]
+
+    # Draw prediction on frame
+    text = f"{pred_name.upper()} {confidence:.2f}"
+    color = (0, 255, 0) if confidence > 0.6 else (0, 165, 255)
+    if pred_name == "neutral":
+        color = (255, 255, 255)
+
+    cv2.putText(frame, text, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.2, color, 3)
+
+    # Drawing probabilities bars
+    for i, prob in enumerate(probs):
+        bar_x = 50
+        bar_y = 100 + i * 40
+        bar_width = int(prob*100)
+
+        bar_color = (200, 0 ,0)
+        if i == pred_idx:
+            bar_color = color
+        elif class_names[i] == 'neutral':
+            bar_color = (150, 150, 150)
+        
+        cv2.rectangle(frame, (bar_x, bar_y), (bar_x + bar_width, bar_y + 25), bar_color, -1)
+        cv2.putText(frame, f"{class_names[i]:{prob:.2f}}", (bar_x + 5, bar_y + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+
+def run_dataset_generation(in_path: Path, args: ArgumentParser):
+
+    print(f"Mode: Dataset generation. Output in: {args.outdir}")
+    
     outdir: Path = args.outdir
     outdir.mkdir(parents=True, exist_ok=True)
 
-    # Derive output paths
     annotated_path: Path = outdir / f"{in_path.stem}_Landmarked.mp4"
     csv_path: Path = outdir / f"{in_path.stem}_Landmarks.csv"
 
-    # Open input video
     cap = cv2.VideoCapture(str(in_path))
     if not cap.isOpened():
         raise RuntimeError(f"Could not open input video: {in_path}")
 
-    # Probe stream info
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    if not fps or fps <= 1e-3:
-        # Fallback if missing/invalid FPS metadata
-        fps = 30.0
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 0
 
-    # Open output writer (raises if fails)
     writer = open_video_writer(annotated_path, fps, (width, height), fourcc='mp4v')
 
-    # Optional CSV (use context manager for auto-close)
     write_csv = not args.no_csv
     csv_file = None
     csv_writer = None
@@ -201,39 +249,30 @@ def main() -> None:
 
     mp_pose = mp.solutions.pose
 
-    # MediaPipe Pose context; use a single instance for the whole video
     with mp_pose.Pose(static_image_mode=False, model_complexity=args.model_complexity) as pose:
         frame_idx = 0
-        # Use tqdm only if total_frames known (>0); otherwise, it still works but won’t show ETA.
-        with tqdm(total=total_frames, desc="Video elaboration", unit="frame") as pbar:
+        with tqdm(total=total_frames, desc="Dataset generation", unit="frame") as pbar:
             while True:
                 ret, frame = cap.read()
                 if not ret:
                     break
 
-                # Convert BGR->RGB for MediaPipe
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 result = pose.process(rgb)
 
                 if result.pose_landmarks:
                     lms = result.pose_landmarks.landmark
-
-                    # Draw body landmarks (in-place)
                     draw_body_only(
                         frame, lms, width, height,
                         visibility_thr=args.visibility_thr
                     )
-
-                    # Dump to CSV
                     if write_csv and csv_writer is not None:
                         dump_body_to_csv(lms, frame_idx, csv_writer)
 
-                # Write annotated frame
                 writer.write(frame)
                 frame_idx += 1
                 pbar.update(1)
 
-    # Clean-up
     cap.release()
     writer.release()
     if csv_file:
@@ -243,6 +282,174 @@ def main() -> None:
     if write_csv:
         print(f"CSV saved in: {csv_path}")
 
+def run_inference(in_path: Path, args: ArgumentParser):
+
+    print("Mode: Real-time inference.")
+
+    # Load Keras model
+    if not args.model_path:
+        raise ValueError("For inference, --model_path is required (e.g. --model_path Shot_Classification.keras)")
+    
+    model_path = Path(args.model_path)
+    if not model_path.exists():
+        raise FileNotFoundError(f"Model not found: {model_path}")
+
+    print(f"Loading model from: {model_path}")
+    # Disable TensorFlow logging except for errors
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+    tf.get_logger().setLevel('ERROR')
+    
+    model = tf.keras.models.load_model(model_path)
+    class_names = ['backhand', 'forehand', 'neutral']
+    T = model.input_shape[0][1]
+    print(f"Model loaded. Sequence length: {T} frame.")
+
+    # Load standardization values
+    std_path = Path('Standardization_Values.npz')
+    if not std_path.exists():
+        raise FileNotFoundError(f"File 'Standardization_Values.npz' not found. "
+                                f"Please run the notebook first to save it.")
+
+    std_data = np.load(std_path)
+    std_params = {key: std_data[key] for key in std_data}
+    print("Standardization values loaded.")
+
+    # Initialize buffers (deque)
+    buffers = {
+        'la': deque([np.zeros(DIMS['left_arm'])] * T, maxlen=T),
+        'ra': deque([np.zeros(DIMS['right_arm'])] * T, maxlen=T),
+        't':  deque([np.zeros(DIMS['torso'])] * T, maxlen=T),
+        'll': deque([np.zeros(DIMS['left_leg'])] * T, maxlen=T),
+        'rl': deque([np.zeros(DIMS['right_leg'])] * T, maxlen=T),
+    }
+
+    # Open video and MediaPipe
+    cap = cv2.VideoCapture(str(in_path))
+    if not cap.isOpened():
+        raise RuntimeError(f"Could not open input video: {in_path}")
+
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 0
+
+    mp_pose = mp.solutions.pose
+    
+    with mp_pose.Pose(static_image_mode=False, model_complexity=args.model_complexity) as pose:
+        with tqdm(total=total_frames, desc="Inference", unit="frame") as pbar:
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                result = pose.process(rgb)
+
+                # Initialize features to zero
+                features = {
+                    'la': np.zeros(DIMS['left_arm']), 'ra': np.zeros(DIMS['right_arm']),
+                    't': np.zeros(DIMS['torso']), 'll': np.zeros(DIMS['left_leg']),
+                    'rl': np.zeros(DIMS['right_leg'])
+                }
+
+                if result.pose_landmarks:
+                    lms = result.pose_landmarks.landmark
+
+                    # Extract features
+                    features_la, features_ra, features_t, features_ll, features_rl = \
+                        extract_body_parts_from_mp(lms)
+
+                    # Draw skeleton
+                    draw_body_only(
+                        frame, lms, width, height, 
+                        visibility_thr=args.visibility_thr
+                    )
+
+                    # Standardize features *before* adding to buffer
+                    features = {
+                        'la': (features_la - std_params['mu_la']) / std_params['sd_la'],
+                        'ra': (features_ra - std_params['mu_ra']) / std_params['sd_ra'],
+                        't':  (features_t  - std_params['mu_t'])  / std_params['sd_t'],
+                        'll': (features_ll - std_params['mu_ll']) / std_params['sd_ll'],
+                        'rl': (features_rl - std_params['mu_rl']) / std_params['sd_rl'],
+                    }
+
+                # Update buffers (with zeros or standardized features)
+                buffers['la'].append(features['la'])
+                buffers['ra'].append(features['ra'])
+                buffers['t'].append(features['t'])
+                buffers['ll'].append(features['ll'])
+                buffers['rl'].append(features['rl'])
+
+                # Prepare model input (add batch dimension)
+                model_input = [
+                    np.array([buffers['la']]),
+                    np.array([buffers['ra']]),
+                    np.array([buffers['t']]),
+                    np.array([buffers['ll']]),
+                    np.array([buffers['rl']])
+                ]
+
+                # Predict RNN
+                probs = model.predict(model_input, verbose=0)[0]
+
+                # Draw results
+                draw_predictions(frame, probs, class_names)
+                
+                cv2.imshow("Inferenza Shot Classification RNN", frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+                
+                pbar.update(1)
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+# --------- Main pipeline ---------
+def main():
+    parser = ArgumentParser(description="Analyze tennis video with MediaPipe. "
+                                        "Save CSV (default) or run RNN inference (with --infer).")
+    # Common arguments
+    parser.add_argument("video", type=str, help="Input video path")
+    parser.add_argument(
+        "--visibility-thr", type=float, default=0.5,
+        help="Visibility threshold for landmark (default: 0.5)"
+    )
+    parser.add_argument(
+        "--model-complexity", type=int, default=1, choices=[0, 1, 2],
+        help="MediaPipe Pose model complexity (0,1,2). Default: 1"
+    )
+
+    # Arguments for "Dataset Generation" mode
+    parser.add_argument(
+        "--outdir", type=Path, default=Path("Landmarked"),
+        help="Output directory for video and CSV (default: ./Landmarked)"
+    )
+    parser.add_argument(
+        "--no-csv", action="store_true",
+        help="Disable CSV export (only annotated video)."
+    )
+
+    # Arguments for "Inference" mode
+    parser.add_argument(
+        "--infer", action="store_true",
+        help="Activate real-time inference mode (disables CSV and video output)."
+    )
+    parser.add_argument(
+        "--model_path", type=str, default="Shot_Classification.keras",
+        help="Path to the .keras model for inference (default: Shot_Classification.keras)"
+    )
+    
+    args = parser.parse_args()
+    
+    in_path = Path(args.video)
+    if not in_path.exists():
+        raise FileNotFoundError(f"Input video not found: {in_path}")
+
+    # Choose which function to execute
+    if args.infer:
+        run_inference(in_path, args)
+    else:
+        run_dataset_generation(in_path, args)
 
 if __name__ == "__main__":
     main()
