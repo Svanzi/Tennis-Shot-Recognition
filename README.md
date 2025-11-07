@@ -33,7 +33,7 @@ After the video starts it is possible to annotate the shot in the exact frame wh
 
 Lastly, you can use the shots annotation made to create the csv file for the dataset by the following command:
 ```
-python .\Shots_Annotation.py ".\video\Video_Name.mp4" ".\Shots_Annotation\Video_Name_Labeled.csv" ".\DataSet\Player_Name"
+python Shots_Annotation.py ".\video\Video_Name.mp4" ".\Shots_Annotation\Video_Name_Labeled.csv" ".\DataSet\Player_Name"
 ```
 For example
 > python Shots_Annotation.py ".video\Nadal_2min.mp4" ".\Shots_Annotation\Nadal_2min_Labeled.csv" ".\DataSet\Nadal"
