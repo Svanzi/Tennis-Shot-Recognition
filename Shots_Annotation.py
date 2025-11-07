@@ -141,7 +141,24 @@ def main():
     shots = shots.sort_values("Frame").reset_index(drop=True)
 
     # Contatori per i nomi file
-    idx_map = {"forehand":1, "backhand":1, "serve":1, "neutral":1}
+    #idx_map = {"forehand":1, "backhand":1, "serve":1, "neutral":1}
+    idx_map = {}
+    
+    if args.outdir.exists():
+        for f in args.outdir.glob("*.csv"):
+            stem = f.stem  # es. forehand_001
+
+            last_underscore_idx = stem.rfind('_')
+            if last_underscore_idx == -1:
+                continue  # Skip files without an underscore
+
+            label = stem[:last_underscore_idx]
+            idx_str = stem[last_underscore_idx + 1:]
+
+            if idx_str.isdigit():
+                idx_num = int(idx_str)
+                current_next_int = idx_map.get(label, 1)
+                idx_map[label] = max(current_next_int, idx_num + 1)
 
     # Apri video
     cap = cv2.VideoCapture(str(args.video))
