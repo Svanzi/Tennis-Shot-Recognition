@@ -332,6 +332,13 @@ def run_inference(in_path: Path, args: ArgumentParser):
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 0
 
+    DISPLAY_WIDTH = 1280
+    DISPLAY_HEIGHT = 720
+    DISPLAY_SIZE = (DISPLAY_WIDTH, DISPLAY_HEIGHT)
+
+    LEGEND_TEXT_LINE1 = f"Video: {in_path.name}"
+    LEGEND_TEXT_LINE2 = "Press 'q' to end."
+
     mp_pose = mp.solutions.pose
     
     with mp_pose.Pose(static_image_mode=False, model_complexity=args.model_complexity) as pose:
@@ -394,8 +401,29 @@ def run_inference(in_path: Path, args: ArgumentParser):
 
                 # Draw results
                 draw_predictions(frame, probs, class_names)
-                
-                cv2.imshow("Inferenza Shot Classification RNN", frame)
+
+                # Resize for display
+                display_frame = cv2.resize(frame, DISPLAY_SIZE, interpolation=cv2.INTER_AREA)
+
+                font = cv2.FONT_HERSHEY_COMPLEX_SMALL
+                font_scale = 0.7
+                font_thickness = 1
+                text_color = (255, 255, 255)
+                text_color_bg = (0, 0, 0) # Background
+
+                def draw_text_with_background(img, text, org, font, font_scale, text_color, bg_color, thickness):
+                    (text_width, text_height), baseline = cv2.getTextSize(text, font, font_scale, thickness)
+                    cv2.rectangle(img, (org[0], org[1] - text_height - baseline), (org[0] + text_width, org[1] + baseline), bg_color, -1)
+                    cv2.putText(img, text, org, font, font_scale, text_color, thickness, cv2.LINE_AA)
+
+                y_offset = display_frame.shape[0] - 30
+                x_offset = 10 
+
+                draw_text_with_background(display_frame, LEGEND_TEXT_LINE2, (x_offset, y_offset), font, font_scale, text_color, text_color_bg, font_thickness)
+                y_offset -= 30
+                draw_text_with_background(display_frame, LEGEND_TEXT_LINE1, (x_offset, y_offset), font, font_scale, text_color, text_color_bg, font_thickness)
+
+                cv2.imshow("Inference Shot Classification RNN", display_frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
                 
