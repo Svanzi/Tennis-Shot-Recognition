@@ -3,13 +3,21 @@ import csv
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import List, Sequence, Tuple
+import os 
+import logging 
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' # Hide Tf informative log
+tf_logger = logging.getLogger('tensorflow')
+tf_logger.setLevel(logging.ERROR) # Hide TF watning 
+absl_logger = logging.getLogger('absl')
+absl_logger.setLevel(logging.ERROR) # Hide MediaPipe warning (W0000...)
+
 import mediapipe as mp
 from mediapipe.python.solutions.pose import PoseLandmark
 from tqdm import tqdm
 import numpy as np
 from collections import deque
 import tensorflow as tf
-import os
 
 ##########################################################################################################
 # Script to annotate a video with body-only landmarks using MediaPipe Pose,

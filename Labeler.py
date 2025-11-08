@@ -67,6 +67,10 @@ if __name__ == "__main__":
     shots_list = []
 
     user_log = ""
+
+    DISPLAY_WIDTH = 1280
+    DISPLAY_HEIGHT = 720
+    DISPLAY_SIZE = (DISPLAY_WIDTH, DISPLAY_HEIGHT)
     
     while cap.isOpened():
         frame_id = max(0, min(frame_id, max(0, total_frames - 1)))
@@ -108,9 +112,12 @@ if __name__ == "__main__":
 
         frame_id += 1
 
-        frame = draw_legend(frame, f"USER INPUT LOG: {user_log}", total_frames)
+        # Resize for display
+        display_frame = cv2.resize(frame, DISPLAY_SIZE, interpolation=cv2.INTER_AREA)
 
-        cv2.imshow("Frame", frame)
+        display_frame = draw_legend(display_frame, f"USER INPUT LOG: {user_log}", total_frames)
+
+        cv2.imshow("Shots Annotation", display_frame)
 
     out_dir = Path("Shots_Annotation")
     out_dir.mkdir(exist_ok=True)
