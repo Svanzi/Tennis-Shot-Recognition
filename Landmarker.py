@@ -198,7 +198,7 @@ def extract_body_parts_from_mp(landmarks: Sequence) -> Tuple[np.array, ...]:
                 np.zeros(DIMS['left_leg']), 
                 np.zeros(DIMS['right_leg']))
     
-def draw_predictions(frame: np.ndarray, probs:np.ndarray, class_names: List[str]) -> None:
+def draw_predictions(frame: np.ndarray, probs:np.ndarray, class_names: List[str], shot_counts: dict) -> None:
     pred_idx = np.argmax(probs)
     pred_name = class_names[pred_idx]
     confidence = probs[pred_idx]
@@ -215,7 +215,7 @@ def draw_predictions(frame: np.ndarray, probs:np.ndarray, class_names: List[str]
     for i, prob in enumerate(probs):
         bar_x = 50
         bar_y = 100 + i * 40
-        bar_width = int(prob*100)
+        bar_width = int(prob*300)
 
         bar_color = (200, 0 ,0)
         if i == pred_idx:
@@ -225,6 +225,11 @@ def draw_predictions(frame: np.ndarray, probs:np.ndarray, class_names: List[str]
         
         cv2.rectangle(frame, (bar_x, bar_y), (bar_x + bar_width, bar_y + 25), bar_color, -1)
         cv2.putText(frame, f"{class_names[i]:{prob:.2f}}", (bar_x + 5, bar_y + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+
+    y_offset = 250
+    color_count = (0, 255, 255)
+    cv2.putText(frame, f"Forehands: {shot_counts['forehand']}", (50, y_offset), cv2.FONT_HERSHEY_SIMPLEX, 1, color_count, 2)
+    cv2.putText(frame, f"Backhands: {shot_counts['backhand']}", (50, y_offset + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, color_count, 2)
 
 def run_dataset_generation(in_path: Path, args: ArgumentParser):
 
@@ -322,6 +327,10 @@ def run_inference(in_path: Path, args: ArgumentParser):
     std_params = {key: std_data[key] for key in std_data}
     print("Standardization values loaded.")
 
+    shot_counts = {'backhand': 0, 'forehand': 0}
+    last_shot_state = 'neutral'
+    Shot_confidence_Threshold = 0.99
+
     # Initialize buffers (deque)
     buffers = {
         'la': deque([np.zeros(DIMS['left_arm'])] * T, maxlen=T),
@@ -407,8 +416,26 @@ def run_inference(in_path: Path, args: ArgumentParser):
                 # Predict RNN
                 probs = model.predict(model_input, verbose=0)[0]
 
+                pred_idx = np.argmax(probs)
+                pred_name = class_names[pred_idx]
+                confidence = probs[pred_idx]
+
+                current_shot_state = 'neutral'
+
+                if confidence > Shot_confidence_Threshold:
+                    if pred_name == 'forehand':
+                        current_shot_state = 'forehand'
+                        if last_shot_state == 'neutral':
+                            shot_counts['forehand'] += 1
+                    elif pred_name == 'backhand':
+                        current_shot_state = 'backhand'
+                        if last_shot_state == 'neutral':
+                            shot_counts['backhand'] += 1
+
+                last_shot_state = current_shot_state 
+
                 # Draw results
-                draw_predictions(frame, probs, class_names)
+                draw_predictions(frame, probs, class_names, shot_counts)
 
                 # Resize for display
                 display_frame = cv2.resize(frame, DISPLAY_SIZE, interpolation=cv2.INTER_AREA)
