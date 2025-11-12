@@ -458,7 +458,7 @@ def run_inference(in_path: Path, args: ArgumentParser):
                 y_offset -= 30
                 draw_text_with_background(display_frame, LEGEND_TEXT_LINE1, (x_offset, y_offset), font, font_scale, text_color, text_color_bg, font_thickness)
 
-                cv2.imshow("Inference Shot Classification RNN", display_frame)
+                cv2.imshow(f"Inference {args.model_path}", display_frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
                 
