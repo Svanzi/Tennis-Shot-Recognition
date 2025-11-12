@@ -5,7 +5,7 @@ The project is already provided with a dataset, however, it is possible to expan
 
 ### Tennis video
 
-Firstly it is required to have a video of a tennis rally. It is possible to download it from youtube with a video converter
+Firstly it is required to have a video of a tennis rally. It is possible to download it from youtube with a video converter.
 
 ### Body keypoints
 
@@ -17,7 +17,7 @@ python Landmarker.py Video/Video_Name.mp4
 ### Annotate shots
 
 Afterwards, you need to manually note the types of shots 
-To do so you can run the following command:
+To do so you have to run the following command:
 ```
 python Labeler.py Video/Video_Name.mp4
 ```
@@ -31,24 +31,24 @@ After the video starts it is possible to annotate the shot in the exact frame wh
 
 ### Adding shots to the dataset
 
-Lastly, you can use the shots annotation made to create the csv file for the dataset by the following command:
+Lastly, you must use the shots annotation made to create the csv file for the dataset by the following command:
 ```
 python Shots_Annotation.py ".\video\Video_Name.mp4" ".\Shots_Annotation\Video_Name_Labeled.csv" ".\DataSet\Player_Name"
 ```
 For example
 > python Shots_Annotation.py ".video\Nadal_2min.mp4" ".\Shots_Annotation\Nadal_2min_Labeled.csv" ".\DataSet\Nadal"
 
-Objectives:
+# Training the model
 
-- Extract body key point from a video
-- Create a dataset for the 3 main shots in tennis (forehand, backhand, service) and neutral position
-- Train a model predict and classify the shots in a video
-- Use diffferent model (LSTM, GRU, Transformer) in order to compare the results and performances
-  
-<img width="1092" height="309" alt="image" src="https://github.com/user-attachments/assets/16932434-a100-4bef-8637-7d19ff4ed7eb" />
+# Display results and real time shot classification
 
+To display the model training results and watch the calssification in action, run the **Landarker.py** script with ```--infer``` and ```--model_path``` tags as a command as follow: 
 ```
-python Landmarker.py ".\video\Video_Name.mp4" --infer --model_path "Shot_Classification.keras"
+python Landmarker.py ".\video\Video_Name.mp4" --infer --model_path "Model_Name.keras"
 ```
+For example:
+> python Landmarker.py ".\video\Federer_2min.mp4" --infer --model_path "Shot_Classification_SimpleRNN.keras
 
-<img width="982" height="332" alt="image" src="https://github.com/user-attachments/assets/c9b49ba8-31b9-4d78-b2c0-98d543d1ba2e" />
+or:
+
+> python Landmarker.py ".\video\Federer_2min.mp4" --infer --model_path "Shot_Classification_GRU.keras
