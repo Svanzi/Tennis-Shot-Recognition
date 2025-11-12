@@ -38,7 +38,9 @@ python Shots_Annotation.py ".\video\Video_Name.mp4" ".\Shots_Annotation\Video_Na
 For example
 > python Shots_Annotation.py ".video\Nadal_2min.mp4" ".\Shots_Annotation\Nadal_2min_Labeled.csv" ".\DataSet\Nadal"
 
-# Training the model
+# Training the model 
+
+After the model is trained update the ```Standardization_Values-npz``` file in the local directory.
 
 # Display results and real time shot classification
 
