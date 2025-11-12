@@ -40,7 +40,14 @@ For example
 
 # Training the model 
 
-After the model is trained update the ```Standardization_Values-npz``` file in the local directory.
+The file ```Shot_Classification.ipynb``` is used to train the models, which share the same architecture but differ on the type of LSTM cell used:
+- standard LSTM cell
+- GRU cell
+  
+After the models are trained update the local directory with the following files:
+- ```Standardization_Values.npz```
+- ```Shot_Classification_SimpleRNN.keras```
+- ```Shot_Classification_GRU.keras```
 
 # Display results and real time shot classification
 
