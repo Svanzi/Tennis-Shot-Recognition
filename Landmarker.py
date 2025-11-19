@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import List, Sequence, Tuple
 import os 
 import logging 
+from tcn import TCN
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' # Hide Tf informative log
 tf_logger = logging.getLogger('tensorflow')
@@ -329,7 +330,7 @@ def run_inference(in_path: Path, args: ArgumentParser):
 
     shot_counts = {'backhand': 0, 'forehand': 0}
     last_shot_state = 'neutral'
-    Shot_confidence_Threshold = 0.99
+    Shot_confidence_Threshold = 0.9
 
     # Initialize buffers (deque)
     buffers = {
