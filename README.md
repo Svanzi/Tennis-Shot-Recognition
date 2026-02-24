@@ -60,7 +60,9 @@ For example:
 
 > python Landmarker.py ".\video\Sinner_2min.mp4" --infer --model_path "Shot_Classification_GRU.keras"
 
-> python Landmarker.py ".\video\Sinner_2min.mp4" --infer --model_path "Shot_Classification_TCN.keras" 
+> python Landmarker.py ".\video\Sinner_2min.mp4" --infer --model_path "Shot_Classification_TCN.keras"
+
+
 ![Backhand Test](https://github.com/user-attachments/assets/9a7fe21a-c9e8-45dc-8777-f31ec4105790)
 
 
