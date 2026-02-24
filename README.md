@@ -36,7 +36,7 @@ Lastly, you must use the shots annotation made to create the csv file for the da
 python Shots_Annotation.py ".\video\Video_Name.mp4" ".\Shots_Annotation\Video_Name_Labeled.csv" ".\DataSet\Player_Name"
 ```
 For example
-> python Shots_Annotation.py ".video\Nadal_2min.mp4" ".\Shots_Annotation\Nadal_2min_Labeled.csv" ".\DataSet\Nadal"
+> python Shots_Annotation.py ".video\Sinner_2min.mp4" ".\Shots_Annotation\Sinner_2min_Labeled.csv" ".\DataSet\Sinner"
 
 # Training the model 
 
