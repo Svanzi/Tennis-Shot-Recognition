@@ -56,11 +56,11 @@ To display the model training results and watch the calssification in action, ru
 python Landmarker.py ".\video\Video_Name.mp4" --infer --model_path "Model_Name.keras"
 ```
 For example:
-> python Landmarker.py ".\video\Federer_2min.mp4" --infer --model_path "Shot_Classification_SimpleRNN.keras
+> python Landmarker.py ".\video\Federer_2min.mp4" --infer --model_path "Shot_Classification_SimpleRNN.keras"
 
 or:
 
-> python Landmarker.py ".\video\Federer_2min.mp4" --infer --model_path "Shot_Classification_GRU.keras
+> python Landmarker.py ".\video\Federer_2min.mp4" --infer --model_path "Shot_Classification_GRU.keras"
 
 
 ![Backhand Test](https://github.com/user-attachments/assets/9a7fe21a-c9e8-45dc-8777-f31ec4105790)
