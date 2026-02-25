@@ -62,8 +62,4 @@ For example:
 
 > python Landmarker.py ".\video\Sinner_2min.mp4" --infer --model_path "Shot_Classification_TCN.keras"
 
-
-![Backhand Test](https://github.com/user-attachments/assets/9a7fe21a-c9e8-45dc-8777-f31ec4105790)
-
-
-![Forehand Test](https://github.com/user-attachments/assets/eaa15b40-41c5-4e0b-a318-edaf55633dba)
+![Sinner GRU GitHub](https://github.com/user-attachments/assets/0a86faf4-38c0-45f7-9627-c992e5423483)
